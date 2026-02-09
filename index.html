@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>BOQ Generator</title>
+
+    <!-- 1. CSS FILES FIRST -->
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <!-- Your Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- 2. EXTERNAL LIBRARIES (in head for PDF/Excel) -->
+    <!-- Note: These are already loaded via CDN in body, but better here for PDF generation -->
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="#" onclick="showRefreshConfirmation(); return false;">
+                <i class="bi bi-clipboard-data me-2"></i>BOQ Generator
+            </a>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="boq-header text-center py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-3">Bill of Quantities Generator</h1>
+        <p class="lead mb-4">Create professional BOQs in minutes. Export to Excel instantly.</p>
+        <div class="mt-4">
+            <span class="badge bg-light text-primary me-2 p-2"><i class="bi bi-check-circle me-1"></i>Auto Calculations</span>
+            <span class="badge bg-light text-primary me-2 p-2"><i class="bi bi-check-circle me-1"></i>Save Drafts</span>
+            <span class="badge bg-light text-primary p-2"><i class="bi bi-check-circle me-1"></i>Excel Export</span>
+        </div>
+    </div>
+    </header>
+
+    <!-- Main Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-10 mx-auto">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white d-flex align-items-center">
+                            <h4 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Create New BOQ</h4>
+                            <button type="button" class="btn btn-outline-light btn-sm ms-auto" onclick="openPricelistModal()">
+                                <i class="bi bi-tools me-1"></i> Pricelist
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <form id="boqForm">
+                                <!-- Project Info -->
+                                <h5 class="border-bottom pb-2 mb-3">Project Information</h5>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <input type="text" name="project_name" class="form-control" placeholder="Project Name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" name="client_name" class="form-control" placeholder="Client Name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" name="company_name" class="form-control" placeholder="Company Name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" name="location" class="form-control" placeholder="Location">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" name="prepared_by" class="form-control" placeholder="Prepared By">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <textarea name="additional_details" class="form-control" placeholder="Additional Details"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Categories & Items -->
+                                <h5 class="border-bottom pb-2 mb-3">Categories & Items</h5>
+                                <div class="d-flex mb-3">
+                                    <input type="text" 
+                                           id="newCategoryName" 
+                                           class="form-control me-2" 
+                                           list="categoryOptions"
+                                           placeholder="Type or select category...">
+                                    <datalist id="categoryOptions">
+                                        <option value="Preliminaries">
+                                        <option value="General Requirements">
+                                        <option value="Site Preparation">
+                                        <option value="Earthworks">
+                                        <option value="Substructure Works">
+                                        <option value="Concrete Works">
+                                        <option value="Masonry Works">
+                                        <option value="Structural Steel Works">
+                                        <option value="Carpentry">
+                                        <option value="Formwork">
+                                        <option value="Roofing Works">
+                                        <option value="Waterproofing">
+                                        <option value="Insulation">
+                                        <option value="Doors & Windows">
+                                        <option value="Finishing Works">
+                                        <option value="Flooring">
+                                        <option value="Tiling">
+                                        <option value="Painting Works">
+                                        <option value="Plumbing">
+                                        <option value="Sanitary Works">
+                                        <option value="Electrical Works">
+                                        <option value="Mechanical Works (HVAC, Firefighting)">
+                                        <option value="External Works">
+                                        <option value="Landscaping Works">
+                                        <option value="Testing">
+                                        <option value="Commissioning">
+                                    </datalist>
+                                    <button type="button" class="btn btn-primary" onclick="addCategory()">
+                                        <i class="bi bi-plus-circle me-1"></i> Add Category
+                                    </button>
+                                </div>
+
+                                <div id="categoriesContainer"></div>
+
+                                <!-- Totals -->
+                                <div class="total-box">
+                                    <h5 class="border-bottom pb-2">Summary</h5>
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Markup Rate (%)</label>
+                                            <input type="number" id="taxRate" class="form-control" value="18" min="0" max="100" step="0.01">
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <h6>Subtotal: <span id="subtotal">0.00</span></h6>
+                                            <h6>Markup: <span id="taxAmount">0.00</span></h6>
+                                            <h4 class="text-primary">Total: ₱<span id="grandTotal">0.00</span></h4>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="d-flex justify-content-between mt-4">
+                                    <div>
+                                        <button type="button" class="btn btn-outline-secondary me-2" onclick="saveDraft()">
+                                            <i class="bi bi-save me-1"></i> Save Draft
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary me-2" onclick="loadDraft()">
+                                           <i class="bi bi-folder2-open me-1"></i> Load Draft
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-primary me-2" onclick="exportExcelProfessional(this)">
+                                            <i class="bi bi-file-earmark-excel me-1"></i> Export to Excel
+                                        </button>
+                                        <button type="button" class="btn btn-danger me-2" onclick="exportPDF()">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i> Export to PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 text-center">
+        <p class="mb-0">BOQ Generator &copy; 2026</p>
+    </footer>
+
+    <!-- ============================================
+         CORRECT SCRIPT LOADING ORDER (BOTTOM OF BODY)
+         ============================================ -->
+    
+    <!-- 1. BOOTSTRAP JS (with Popper) - Required for components -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 2. EXTERNAL LIBRARIES (CDN) -->
+    <!-- Excel Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- 3. YOUR APPLICATION SCRIPTS (in order of dependency) -->
+    <!-- Core Utilities FIRST -->
+    <script>
+        window.parseNumber = function(value) {
+            return parseFloat(String(value).replace(/,/g, '')) || 0;
+        };
+        
+        window.formatNumber = function(value) {
+            return value.toLocaleString(undefined, { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
+        };
+        
+        window.categoryCount = 0;
+    </script>
+    
+    <!-- Core Application Logic -->
+    <script src="js/core.js"></script>
+    
+    <!-- Draft Save/Load Functionality -->
+    <script src="js/draft.js"></script>
+    
+    <!-- Export Functions (depend on libraries and core) -->
+    <script src="js/export-excel.js"></script>
+    <script src="js/export-pdf.js"></script>
+  
+    <!-- 4. INITIALIZATION SCRIPT (runs after everything is loaded) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('BOQ Generator initialized');
+            
+            const taxRateInput = document.getElementById('taxRate');
+            if (taxRateInput) {
+                taxRateInput.addEventListener('input', function() {
+                    if (typeof window.calculateTotals === 'function') {
+                        window.calculateTotals();
+                    }
+                });
+            }
+            
+            if (typeof window.loadDraft === 'function') {
+            }
+        });
+    </script>
+
+<script src="js/pricelist.js"></script>
+
+<!-- Add this BEFORE the closing </body> tag -->
+<datalist id="descriptionDatalist"></datalist>
+
+<script>
+function populateDescriptionDatalist() {
+    const datalist = document.getElementById('descriptionDatalist');
+    const descriptions = new Set();
+    
+    const constructionItems = [
+        "Cement",
+        "Sand", 
+        "Coarse aggregate",
+        "Water",
+        "Concrete blocks / bricks",
+        "Reinforcement steel (rebar)",
+        "Structural steel sections",
+        "Timber",
+        "Plywood",
+        "Nails",
+        "Screws, bolts & anchors",
+        "Welding rods",
+        "Form oil / release agent",
+        "Roofing sheets / tiles",
+        "Insulation materials",
+        "Waterproofing membranes",
+        "PVC / PPR / GI pipes",
+        "Pipe fittings & valves",
+        "Sanitary fixtures",
+        "Electrical cables & wires",
+        "Electrical conduits & trunking",
+        "Switches & sockets",
+        "Lighting fixtures",
+        "Firefighting pipes & fittings",
+        "HVAC ducts & accessories",
+        "Glass",
+        "Aluminum / steel frames",
+        "Paint",
+        "Putty",
+        "Tile adhesive",
+        "Grout",
+        "Tiles / marble / vinyl flooring",
+        "Asphalt",
+        "Paving blocks",
+        "Landscaping materials",
+        
+        // Personnel
+        "Project manager",
+        "Construction manager", 
+        "Site engineer",
+        "QA/QC engineer",
+        "Safety officer",
+        "Surveyor",
+        "Foreman",
+        "General laborer",
+        "Skilled laborer",
+        "Mason",
+        "Mason helper",
+        "Carpenter", 
+        "Carpenter helper",
+        "Steel fixer",
+        "Welder",
+        "Electrician",
+        "Electrician helper",
+        "Plumber",
+        "Plumber helper",
+        "HVAC technician",
+        "Firefighting technician",
+        "Painter",
+        "Tile setter",
+        "Roofer",
+        "Equipment operator",
+        "Storekeeper",
+        
+        // Equipment
+        "Excavator",
+        "Bulldozer",
+        "Backhoe loader",
+        "Dump truck",
+        "Crane",
+        "Concrete mixer",
+        "Batching plant",
+        "Concrete pump",
+        "Vibrator",
+        "Plate compactor",
+        "Roller compactor",
+        "Scaffolding",
+        "Wheelbarrow",
+        "Welding machine",
+        "Cutting machine",
+        "Grinding machine",
+        "Drilling machine",
+        "Circular saw",
+        "Tile cutter",
+        "Pipe cutter",
+        "Threading machine",
+        "Air compressor",
+        "Multimeter",
+        "Measuring tools",
+        "Ladders",
+        "Safety harness",
+        "Personal protective equipment (PPE)",
+        
+        // Add pricelist items too
+        "Mason", "Carpenter", "Welder", "Electrician", "Plumber", 
+        "Painter", "Laborer", "Foreman", "Backhoe Operator", "Crane Operator",
+        "Cement (40kg bag)", "Gravel (cu.m.)", "Sand (cu.m.)", 
+        "CHB 4\"", "CHB 6\"", "Steel Bar #3 (10mm)", "Steel Bar #4 (12mm)",
+        "Steel Bar #5 (16mm)", "Plywood (4' x 8')", "2\" x 2\" x 10' Lumber",
+        "2\" x 3\" x 10' Lumber", "2\" x 4\" x 10' Lumber", "G.I. Roofing Sheet",
+        "Ceiling Board", "Ceramic Tile (60x60cm)", "Paint (gallon)",
+        "PVC Pipe 1/2\"", "PVC Pipe 1\"", "Electrical Wire #14", "Circuit Breaker 20A"
+    ];
+    
+    constructionItems.forEach(item => descriptions.add(item));
+    
+    datalist.innerHTML = '';
+    Array.from(descriptions).sort().forEach(desc => {
+        const option = document.createElement('option');
+        option.value = desc;
+        datalist.appendChild(option);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    populateDescriptionDatalist();
+    console.log('Description datalist populated with construction items');
+});
+</script>
+
+</body>
+
+</html>
+
